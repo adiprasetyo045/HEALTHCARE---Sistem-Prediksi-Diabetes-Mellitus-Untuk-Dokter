@@ -1,0 +1,73 @@
+{% extends "base.html" %}  {% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h4 class="mb-0 text-primary fw-bold">📜 Riwayat Diagnosa</h4>
+            <button class="btn btn-outline-primary btn-sm" onclick="loadLogs()">
+                🔄 Refresh Data
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Waktu</th>
+                            <th>Hasil Prediksi</th>
+                            <th>Akurasi Model</th>
+                            <th>Usia</th>
+                            <th>Gula Darah</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                Memuat data...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadLogs() {
+        const tbody = document.getElementById('logsTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Memuat data...</td></tr>';
+
+        try {
+            const response = await fetch('/api/logs');
+            const data = await response.json();
+
+            if (data.success && data.logs.length > 0) {
+                tbody.innerHTML = ''; 
+                data.logs.forEach(log => {
+                    const isDiabetic = log.result === 'Diabetic';
+                    const badgeColor = isDiabetic ? 'bg-danger' : 'bg-success';
+                    
+                    const row = `
+                        <tr>
+                            <td class="ps-4 text-muted small">${log.timestamp}</td>
+                            <td><span class="badge ${badgeColor}">${log.result}</span></td>
+                            <td>${log.confidence}</td>
+                            <td>${log.age} th</td>
+                            <td>${log.glucose} mg/dL</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4">Belum ada riwayat data.</td></tr>';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Gagal mengambil data dari server.</td></tr>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadLogs);
+</script>
+{% endblock %}

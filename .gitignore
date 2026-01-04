@@ -1,0 +1,75 @@
+# =============================================================================
+# 1. SISTEM & PYTHON (WAJIB IGNORE)
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =============================================================================
+# 2. VIRTUAL ENVIRONMENT & RAHASIA
+# =============================================================================
+.venv/
+venv/
+env/
+.env
+
+# =============================================================================
+# 3. DATASET & LOGS (FOLDER BACKEND/DATA)
+# =============================================================================
+# Ignore data hasil generate/balancing
+Backend/data/diabetes_balanced.csv
+
+# Ignore Log Prediksi (Privasi User)
+Backend/data/prediction_log.csv
+Backend/logs/*.csv
+
+# Ignore Laporan Text Hasil Analisa (Sampah generate)
+Backend/data/*_report.txt
+
+# TAPI: Wajib upload dataset asli agar script bisa jalan
+!Backend/data/diabetes.csv
+
+# Keep JSON evaluasi untuk histori akurasi
+!Backend/data/evaluation_result.json
+
+# =============================================================================
+# 4. MODEL MACHINE LEARNING (CRUCIAL FOR RENDER)
+# =============================================================================
+# Biasanya model di-ignore, TAPI untuk Render kita WAJIB upload
+# agar tidak perlu training ulang di server.
+
+# Ignore file model temporary/sampah jika ada
+Backend/models/*.tmp
+
+# Pastikan file model & bundle TER-UPLOAD
+!Backend/models/decision_tree_bundle.pkl
+!Backend/models/decision_tree_model.pkl
+!Backend/models/decision_tree_meta.json
+
+# =============================================================================
+# 5. FILE PDF & LAPORAN USER
+# =============================================================================
+# Ignore PDF hasil diagnosa user (Privasi & Hemat storage)
+Backend/static/reports/*.pdf
+Static/reports/*.pdf
+
+# TAPI: JANGAN ignore PDF Jurnal Referensi (Dokumentasi)
+# Sesuaikan path dengan struktur Anda (Backend/routes/journals/...)
+!Backend/routes/journals/*.pdf
+!Backend/Research/Journals/*.pdf
+
+# =============================================================================
+# 6. LAIN-LAIN
+# =============================================================================
+# Node modules jika ada sisa frontend
+node_modules/
+package-lock.json
+
+# Keep gitkeep agar folder kosong tetap ada strukturnya
+!*/.gitkeep
