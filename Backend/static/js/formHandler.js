@@ -1,22 +1,21 @@
 /**
- * formHandler.js - Final Synchronized Version
- * Cocok dengan ID di form.html (btnPdf, predictionForm, dll)
+ * formHandler.js - VERSI FINAL HUGGING FACE 🚀
+ * Menggunakan window.apiClient agar koneksi stabil & otomatis.
  */
 
-// Variabel Global Data
+// Variabel Global
 let currentInputData = {};
 let currentResultLabel = "";
 let currentProbability = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 1. INISIALISASI ELEMEN (SESUAI ID DI HTML) ---
+    // --- 1. INISIALISASI ELEMEN ---
     const hInput = document.getElementById('height');
     const wInput = document.getElementById('weight');
     const bInput = document.getElementById('bmi');
     
-    // ID tombol sesuai HTML Anda
     const btnPredict = document.getElementById('btnPredict');
-    const btnPdf = document.getElementById('btnPdf'); // SUDAH DIPERBAIKI (sebelumnya btnCetak)
+    const btnPdf = document.getElementById('btnPdf'); 
     const btnReset = document.getElementById('resetBtn');
     
     const form = document.getElementById('predictionForm');
@@ -24,14 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. LOGIKA AUTO BMI ---
     const updateBMI = () => {
-        const h = parseFloat(hInput.value); // cm? atau m?
-        const w = parseFloat(wInput.value); // kg
-        
-        // Cek placeholder di HTML: Height (m). Jadi inputnya Meter.
-        // Tapi logic JS sebelumnya convert cm ke m. 
-        // Kita ikuti standar HTML Anda (input dalam Meter)
+        const h = parseFloat(hInput.value); 
+        const w = parseFloat(wInput.value); 
         if (h > 0 && w > 0) {
-            // Jika input user 1.70 (meter)
+            // Rumus BMI: Berat / (Tinggi x Tinggi)
             const bmi = (w / (h * h)).toFixed(2);
             bInput.value = bmi;
         } else {
@@ -44,11 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
         wInput.addEventListener('input', updateBMI);
     }
 
-    // --- 3. LOGIKA PREDIKSI ---
+    // --- 3. LOGIKA PREDIKSI (PAKAI API CLIENT) ---
     if (btnPredict && form) {
         btnPredict.addEventListener('click', async (e) => {
             e.preventDefault(); 
-
+            
+            // Validasi Form HTML5
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;
@@ -61,52 +57,49 @@ document.addEventListener('DOMContentLoaded', () => {
             resContainer.style.display = 'none';
 
             try {
+                // Ambil data form
                 const formData = new FormData(form);
                 const rawData = Object.fromEntries(formData.entries());
                 const payload = {};
-
-                // Konversi Data
+                
+                // Konversi tipe data (String -> Number) agar Python tidak error
                 const intFields = ['age', 'pulse_rate', 'systolic_bp', 'diastolic_bp'];
-                // Dropdown value di HTML Anda adalah "Male"/"Female", "Yes"/"No".
-                // Backend Python butuh konversi atau bisa baca string?
-                // Asumsi: Backend Python sudah punya Preprocessor yang handle string "Male"/"Yes".
                 
                 for (const key in rawData) {
-                    if (key === 'bmi') continue;
+                    if (key === 'bmi') continue; // BMI kita ambil manual
                     
                     if (intFields.includes(key)) {
                         payload[key] = parseInt(rawData[key]) || 0;
                     } else if (['glucose', 'height', 'weight'].includes(key)) {
                         payload[key] = parseFloat(rawData[key]) || 0;
                     } else {
-                        // Kirim string apa adanya (Male/Female, Yes/No)
-                        payload[key] = rawData[key];
+                        payload[key] = rawData[key]; // Biarkan string (Male/Female, Yes/No)
                     }
                 }
                 
+                // Masukkan BMI
                 payload['bmi'] = parseFloat(bInput.value) || 0;
+                
+                // Simpan ke global (untuk PDF nanti)
                 currentInputData = payload;
 
-                // Kirim ke Backend
-                const response = await fetch('/api/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const res = await response.json();
+                // 🔥 BAGIAN PENTING: Panggil Server via apiClient 🔥
+                console.log("Mengirim data...", payload);
+                
+                // Kita gunakan window.apiClient yang sudah pintar
+                const res = await window.apiClient.predict(payload);
 
                 if (res.success) {
                     currentResultLabel = res.label;
                     currentProbability = res.probability_percent;
                     renderResult(res);
                 } else {
-                    alert("Gagal: " + (res.error || "Kesalahan server."));
+                    alert("Gagal Diagnosa: " + (res.error || "Server error."));
                 }
 
             } catch (err) {
-                console.error("Fetch Error:", err);
-                alert("Gagal menghubungi server backend.");
+                console.error("Prediction Error:", err);
+                alert("Terjadi Kesalahan: " + err.message);
             } finally {
                 btnPredict.innerHTML = originalText;
                 btnPredict.disabled = false;
@@ -114,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 4. LOGIKA CETAK PDF ---
+    // --- 4. LOGIKA CETAK PDF (PAKAI API CLIENT) ---
     if (btnPdf) {
         btnPdf.addEventListener('click', async () => {
             const originalText = btnPdf.innerHTML;
@@ -122,26 +115,28 @@ document.addEventListener('DOMContentLoaded', () => {
             btnPdf.disabled = true;
 
             try {
-                const response = await fetch('/api/download-report', {
+                // Request download link
+                const data = await window.apiClient.request('/api/download-report', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: {
                         input_data: currentInputData,
                         label: currentResultLabel,
                         probability: currentProbability
-                    })
+                    }
                 });
 
-                const data = await response.json();
-
                 if (data.success) {
-                    window.open(data.download_url, '_blank');
+                    // Buka link download di tab baru
+                    // apiClient.baseUrl sudah berisi alamat https://huggingface... yang benar
+                    const downloadUrl = window.apiClient.baseUrl + data.download_url;
+                    window.open(downloadUrl, '_blank');
                 } else {
-                    alert("Gagal PDF: " + data.error);
+                    alert("Gagal membuat PDF: " + data.error);
                 }
+
             } catch (error) {
                 console.error('PDF Error:', error);
-                alert("Error koneksi saat download PDF.");
+                alert("Gagal download PDF: " + error.message);
             } finally {
                 btnPdf.innerHTML = originalText;
                 btnPdf.disabled = false;
@@ -149,19 +144,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 5. RENDER HASIL ---
+    // --- 5. RENDER HASIL (TAMPILAN) ---
     function renderResult(res) {
         resContainer.style.display = 'block';
-
         const isDiabetic = res.label === 'Diabetic';
-        const color = isDiabetic ? '#ef4444' : '#10b981'; // Merah/Hijau Tailwind like
+        const color = isDiabetic ? '#ef4444' : '#10b981'; // Merah / Hijau
         
-        // 1. Label Utama
+        // Label & Skor
         const resLabel = document.getElementById('resLabel');
         resLabel.innerText = isDiabetic ? 'TERINDIKASI DIABETES' : 'TIDAK TERINDIKASI';
         resLabel.style.color = color;
         
-        // 2. Risk & Probabilitas
         document.getElementById('resRisk').innerText = res.risk_level;
         document.getElementById('resRisk').style.color = color;
         
@@ -169,17 +162,16 @@ document.addEventListener('DOMContentLoaded', () => {
         probEl.innerText = res.probability_percent + '%';
         probEl.style.color = color;
 
-        // 3. Info Model
+        // Info Model
         if(res.model_info) {
             document.getElementById('modName').innerText = res.model_info.name;
             document.getElementById('modAcc').innerText = res.model_info.accuracy;
         }
 
-        // 4. List Data Input (Agar user bisa review)
+        // Tampilkan Ulang Input User
         const inputList = document.getElementById('inputList');
         if(inputList) {
             inputList.innerHTML = '';
-            // Tampilkan beberapa data penting saja
             const keysShow = ['age', 'gender', 'bmi', 'glucose', 'hypertensive'];
             keysShow.forEach(k => {
                 if(currentInputData[k] !== undefined) {
@@ -192,13 +184,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // 5. Feature Importance (Faktor Dominan)
+        // Grafik Faktor Penyebab (Feature Importance)
         const featList = document.getElementById('featList');
         featList.innerHTML = '';
         
         if (res.feature_importance && res.feature_importance.length > 0) {
             res.feature_importance.forEach(f => {
-                // Render sebagai List Item sesuai CSS HTML Anda
                 featList.innerHTML += `
                     <li>
                         <span>${f.name}</span>
@@ -214,14 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
             featList.innerHTML = '<li style="justify-content:center;">Data faktor tidak tersedia</li>';
         }
 
-        // Scroll
+        // Scroll ke bawah otomatis
         resContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // --- 6. LOGIKA RESET ---
+    // --- 6. RESET FORM ---
     if (btnReset) {
         btnReset.addEventListener('click', () => {
-            // Confirm tidak perlu, langsung reset saja biar UX cepat
             form.reset();
             resContainer.style.display = 'none';
             window.scrollTo({ top: 0, behavior: 'smooth' });

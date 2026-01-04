@@ -1,11 +1,13 @@
 class DiabetesApiClient {
     constructor(baseUrl = '') {
-        // Otomatis deteksi URL. Jika kosong, gunakan origin saat ini (http://localhost:8000)
+        // --- HUGGING FACE FIX ---
+        // Otomatis deteksi URL. Ini akan mengikuti domain Hugging Face (https://...)
+        // Tidak lagi memaksa localhost:8000
         this.baseUrl = baseUrl || window.location.origin;
         this.isConnected = false;
         
         console.log('🌐 Diabetes API Client initialized');
-        console.log('   Base URL:', this.baseUrl);
+        console.log('   Target URL:', this.baseUrl);
     }
 
     /**
@@ -31,11 +33,17 @@ class DiabetesApiClient {
         }
 
         try {
+            console.log(`📡 Sending [${finalOptions.method}] to ${url}`);
             const response = await fetch(url, finalOptions);
             const contentType = response.headers.get("content-type");
             
             // Handle jika server error dan tidak mengembalikan JSON (misal 500 HTML error)
             if (!contentType || !contentType.includes("application/json")) {
+                // Jika statusnya OK tapi bukan JSON, mungkin halaman HTML biasa
+                if (response.ok) {
+                    console.warn("⚠️ Received non-JSON response but status is OK");
+                    return { status: "ok", message: "Non-JSON response received" };
+                }
                 throw new Error(`Server Error: Received non-JSON response (${response.status})`);
             }
 
@@ -58,16 +66,15 @@ class DiabetesApiClient {
 
     /**
      * CEK KONEKSI (Health Check)
-     * Menggunakan endpoint model-info karena api_routes.py tidak memiliki /health khusus.
+     * UPDATE: Menggunakan endpoint /health yang sudah dibuat di run_app.py
+     * Ini jauh lebih stabil daripada /api/model-info
      */
     async checkConnection() {
-        return this.request('/api/model-info');
+        return this.request('/health');
     }
 
     /**
      * PREDIKSI (Endpoint Utama)
-     * Mengirim data payload mentah ke Backend.
-     * Biarkan Backend/models/preprocess.py yang melakukan cleaning agar konsisten.
      */
     async predict(payload) {
         if (!payload || typeof payload !== 'object') {
@@ -82,7 +89,6 @@ class DiabetesApiClient {
 
     /**
      * GET LOGS/HISTORY
-     * Mengambil riwayat prediksi untuk Dashboard
      */
     async getLogs() {
         return this.request('/api/logs');
@@ -90,25 +96,25 @@ class DiabetesApiClient {
 
     /**
      * GET MODEL INFO
-     * Mengambil metadata akurasi model
      */
     async getModelInfo() {
         return this.request('/api/model-info');
     }
 }
 
-// Global Export agar bisa dipakai di console browser untuk debugging
+// Global Export
 const api = new DiabetesApiClient();
 window.apiClient = api;
 
 // Auto-check connection saat file dimuat
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        await api.checkConnection();
-        console.log('✅ API Connected & Healthy');
-        // Dispatch event custom jika ada bagian UI yang butuh tahu status koneksi
+        console.log("🔄 Checking API connection...");
+        const status = await api.checkConnection();
+        console.log('✅ API Connected:', status);
         document.dispatchEvent(new CustomEvent('api-connected'));
     } catch (e) {
-        console.warn('⚠️ API Offline atau tidak merespons: Pastikan server Python berjalan di Port 8000');
+        console.warn('⚠️ Gagal cek koneksi awal (tapi mungkin prediksi tetap bisa jalan).', e);
+        // Jangan alert error dulu agar user tidak panik saat pertama buka
     }
 });
