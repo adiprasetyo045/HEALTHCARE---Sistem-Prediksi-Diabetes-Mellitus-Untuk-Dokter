@@ -27,7 +27,7 @@ Aplikasi ini sudah di-deploy dan dapat diakses secara langsung tanpa perlu insta
 ## 📂 Struktur Proyek
 
 ```text
-Diabetes-Detector/
+Diabetes-Detector
 ├── Backend/                 # Source Code Utama
 │   ├── config.py            # Konfigurasi Global
 │   ├── app.py               # Flask App Factory
